@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order Received — IntelPulse</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f1114; --bg-subtle: #1a1d23; --bg-card: #22262f;
+      --text: #f0f2f5; --text-muted: #8b92a0; --border: #2e3440;
+      --accent: #dc2626; --accent-light: rgba(220,38,38,0.12);
+      --amber: #f59e0b; --amber-light: rgba(245,158,11,0.12);
+      --success: #22c55e; --success-light: rgba(34,197,94,0.12);
+      --radius: 8px; --radius-lg: 12px;
+    }
+    body { font-family: 'Inter', system-ui, sans-serif; font-size: 16px; line-height: 1.6; color: var(--text); background: var(--bg); min-height: 100vh; display: flex; flex-direction: column; }
+    h1, h2 { font-family: 'Oswald', sans-serif; letter-spacing: 0.5px; }
+
+    header { background: rgba(15,17,20,0.95); border-bottom: 1px solid var(--border); padding: 16px 24px; }
+    header .container { max-width: 700px; margin: 0 auto; }
+    .logo { font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 1rem; color: var(--text); text-decoration: none; }
+    .logo span { color: var(--accent); }
+
+    main { flex: 1; max-width: 700px; margin: 0 auto; padding: 48px 24px; width: 100%; text-align: center; }
+
+    .check-icon { width: 72px; height: 72px; background: var(--amber-light); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; font-size: 2rem; }
+    .status-icon { font-size: 2rem; margin-bottom: 20px; }
+
+    h1 { font-size: 2rem; font-weight: 700; text-transform: uppercase; margin-bottom: 12px; }
+    .subtitle { color: var(--text-muted); font-size: 1rem; margin-bottom: 40px; }
+
+    .order-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 28px; text-align: left; margin-bottom: 32px; }
+    .order-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .order-row:last-child { border-bottom: none; }
+    .order-row .label { color: var(--text-muted); font-size: 0.875rem; }
+    .order-row .value { font-weight: 600; font-size: 0.9rem; }
+    .order-row.total { margin-top: 12px; padding-top: 16px; border-top: 2px solid var(--border); }
+    .order-row.total .label { font-weight: 700; font-size: 1rem; }
+    .order-row.total .value { font-family: 'Oswald', sans-serif; font-size: 1.4rem; color: var(--success); }
+
+    .status-badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 18px; border-radius: 20px; font-size: 0.85rem; font-weight: 700; font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 0.5px; }
+    .status-badge.pending { background: var(--amber-light); color: var(--amber); border: 1px solid rgba(245,158,11,0.2); }
+    .status-badge.paid { background: var(--success-light); color: var(--success); border: 1px solid rgba(34,197,94,0.2); }
+
+    .next-steps { background: var(--bg-subtle); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 28px; text-align: left; margin-bottom: 24px; }
+    .next-steps h3 { font-family: 'Oswald', sans-serif; font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px; color: var(--text); }
+    .next-steps ol { padding-left: 20px; display: flex; flex-direction: column; gap: 10px; }
+    .next-steps li { color: var(--text-muted); font-size: 0.9rem; }
+    .next-steps li strong { color: var(--text); }
+
+    .info-note { background: var(--accent-light); border: 1px solid rgba(220,38,38,0.2); border-radius: var(--radius); padding: 16px 20px; font-size: 0.875rem; color: var(--text-muted); text-align: left; margin-bottom: 24px; }
+    .info-note strong { color: var(--accent); }
+
+    .btn-home { display: inline-flex; align-items: center; gap: 8px; background: var(--accent); color: #fff; font-family: 'Oswald', sans-serif; font-size: 0.9rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 12px 24px; border-radius: var(--radius); text-decoration: none; transition: background 0.15s; }
+    .btn-home:hover { background: #b91c1c; }
+
+    footer { background: var(--bg-subtle); border-top: 1px solid var(--border); padding: 24px; text-align: center; }
+    footer p { font-size: 0.8rem; color: var(--text-muted); }
+    footer a { color: var(--text-muted); text-decoration: none; }
+    footer a:hover { color: var(--text); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <a href="/" class="logo">Intel<span>Pulse</span></a>
+  </div>
+</header>
+
+<main>
+  <div class="status-icon">⏳</div>
+  <h1>Order Received!</h1>
+  <p class="subtitle" id="subtitle">Complete your payment to confirm your order. You'll be redirected to Stripe.</p>
+
+  <div class="order-card">
+    <div class="order-row">
+      <span class="label">Order ID</span>
+      <span class="value" id="order-id">—</span>
+    </div>
+    <div class="order-row">
+      <span class="label">Product</span>
+      <span class="value" id="order-product">Auto Repair Competitive Intel Report</span>
+    </div>
+    <div class="order-row">
+      <span class="label">Status</span>
+      <span class="value"><span class="status-badge pending" id="status-badge"><span id="status-dot">●</span> <span id="status-text">Payment Pending</span></span></span>
+    </div>
+    <div class="order-row">
+      <span class="label">Expected Delivery</span>
+      <span class="value">Within 24 hours of payment</span>
+    </div>
+    <div class="order-row total">
+      <span class="label">Total</span>
+      <span class="value" id="order-price">$97</span>
+    </div>
+  </div>
+
+  <div class="next-steps">
+    <h3>What Happens Next</h3>
+    <ol>
+      <li><strong>Complete payment</strong> — click the button below to finish checkout on Stripe</li>
+      <li><strong>Confirmation email</strong> — you'll receive an order confirmation from Stripe</li>
+      <li><strong>Report delivery</strong> — we'll send your competitive intel PDF within 24 hours of payment clearing</li>
+      <li><strong>Questions?</strong> — email <a href="mailto:hello@intelpulse.net" style="color: var(--accent);">hello@intelpulse.net</a></li>
+    </ol>
+  </div>
+
+  <div class="info-note" id="info-note">
+    <strong>Note:</strong> If you just completed payment, your order status will update to "Paid" within a few minutes. Refresh this page to check.
+  </div>
+
+  <a href="/" class="btn-home">← Back to IntelPulse</a>
+</main>
+
+<footer>
+  <p>Questions? Email <a href="mailto:hello@intelpulse.net">hello@intelpulse.net</a></p>
+</footer>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const orderId = params.get('order_id');
+const type = params.get('type') || 'auto';
+
+const VERTICALS = {
+  auto: { price: '$97', productName: 'Auto Repair Competitive Intel Report' },
+};
+
+const v = VERTICALS[type] || VERTICALS.auto;
+document.getElementById('order-product').textContent = v.productName;
+document.getElementById('order-price').textContent = v.price;
+
+if (orderId) {
+  document.getElementById('order-id').textContent = orderId;
+
+  // Poll for payment status
+  async function checkStatus() {
+    try {
+      const res = await fetch(`/api/order/${orderId}`);
+      if (res.ok) {
+        const order = await res.json();
+        if (order.status === 'paid') {
+          document.getElementById('subtitle').textContent = 'Your payment was confirmed! We\'ll start working on your report shortly.';
+          document.getElementById('status-badge').className = 'status-badge paid';
+          document.getElementById('status-dot').textContent = '✓';
+          document.getElementById('status-text').textContent = 'Payment Confirmed';
+          document.getElementById('info-note').innerHTML = '<strong>Confirmed!</strong> Your report will be delivered within 24 hours. We\'ll email you when it\'s ready.';
+        }
+      }
+    } catch (e) {
+      // Silently fail polling
+    }
+  }
+
+  checkStatus();
+  setInterval(checkStatus, 5000); // poll every 5 seconds
+} else {
+  document.getElementById('order-id').textContent = 'Unknown (no order ID)';
+}
+</script>
+
+</body>
+</html>

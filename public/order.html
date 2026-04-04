@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order Your Intel Report — IntelPulse</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f1114; --bg-subtle: #1a1d23; --bg-card: #22262f;
+      --text: #f0f2f5; --text-muted: #8b92a0; --border: #2e3440;
+      --accent: #dc2626; --accent-hover: #b91c1c; --accent-light: rgba(220,38,38,0.12);
+      --amber: #f59e0b;
+      --success: #22c55e; --radius: 8px; --radius-lg: 12px;
+    }
+    body { font-family: 'Inter', system-ui, sans-serif; font-size: 16px; line-height: 1.6; color: var(--text); background: var(--bg); min-height: 100vh; display: flex; flex-direction: column; }
+    h1, h2, h3 { font-family: 'Oswald', sans-serif; letter-spacing: 0.5px; }
+
+    header { background: rgba(15,17,20,0.95); border-bottom: 1px solid var(--border); padding: 16px 24px; }
+    header .container { max-width: 900px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; }
+    .logo { font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 1rem; color: var(--text); text-decoration: none; }
+    .logo span { color: var(--accent); }
+    .vertical-badge { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; background: var(--accent-light); color: var(--accent); padding: 4px 10px; border-radius: 4px; font-family: 'Oswald', sans-serif; }
+
+    main { flex: 1; max-width: 900px; margin: 0 auto; padding: 48px 24px; width: 100%; }
+    .page-title { font-family: 'Oswald', sans-serif; font-size: 2rem; font-weight: 700; text-transform: uppercase; color: var(--text); margin-bottom: 8px; }
+    .page-sub { color: var(--text-muted); font-size: 1rem; margin-bottom: 40px; }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .form-full { grid-column: 1 / -1; }
+    label { display: block; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); margin-bottom: 8px; font-family: 'Oswald', sans-serif; }
+    input, textarea, select { width: 100%; padding: 12px 16px; background: var(--bg-card); border: 1.5px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 0.95rem; font-family: 'Inter', sans-serif; transition: border-color 0.15s; }
+    input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+    textarea { resize: vertical; min-height: 100px; }
+    .required { color: var(--accent); }
+    .field-note { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; font-weight: 400; text-transform: none; letter-spacing: 0; }
+    .checkbox-field { display: flex; align-items: flex-start; gap: 10px; }
+    .checkbox-field input[type="checkbox"] { width: auto; min-width: 20px; margin-top: 2px; }
+
+    .submit-btn { background: var(--accent); color: #fff; font-family: 'Oswald', sans-serif; font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 16px 32px; border: none; border-radius: var(--radius); cursor: pointer; width: 100%; margin-top: 32px; transition: background 0.15s, transform 0.1s; }
+    .submit-btn:hover { background: var(--accent-hover); transform: translateY(-1px); }
+    .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .submit-note { text-align: center; font-size: 0.8rem; color: var(--text-muted); margin-top: 12px; }
+
+    .order-summary { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 28px; margin-bottom: 32px; }
+    .order-summary h3 { font-family: 'Oswald', sans-serif; font-size: 0.9rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 16px; }
+    .summary-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .summary-row:last-child { border-bottom: none; }
+    .summary-row .label { color: var(--text-muted); font-size: 0.9rem; }
+    .summary-row .value { font-weight: 700; color: var(--text); font-size: 0.95rem; }
+    .summary-total { margin-top: 16px; padding-top: 16px; border-top: 2px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .summary-total .label { font-weight: 700; font-size: 1rem; }
+    .summary-total .price { font-family: 'Oswald', sans-serif; font-size: 1.8rem; font-weight: 700; color: var(--success); }
+
+    .error-msg { background: rgba(220,38,38,0.12); border: 1px solid var(--accent); border-radius: var(--radius); padding: 14px 18px; color: var(--accent); font-size: 0.875rem; margin-bottom: 20px; display: none; }
+    .error-msg.show { display: block; }
+
+    footer { background: var(--bg-subtle); border-top: 1px solid var(--border); padding: 24px; text-align: center; }
+    footer p { font-size: 0.8rem; color: var(--text-muted); }
+    footer a { color: var(--text-muted); text-decoration: none; }
+    footer a:hover { color: var(--text); }
+
+    @media (max-width: 640px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .page-title { font-size: 1.6rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <a href="/" class="logo">Intel<span>Pulse</span></a>
+    <span class="vertical-badge" id="vertical-badge">Auto Repair</span>
+  </div>
+</header>
+
+<main>
+  <h1 class="page-title" id="form-title">Order Your Auto Intel Report</h1>
+  <p class="page-sub" id="form-sub">Fill this out and you'll be redirected to secure payment. Your report will be delivered within 24 hours of payment confirmation.</p>
+
+  <div id="error-box" class="error-msg"></div>
+
+  <div class="order-summary">
+    <h3>Your Order</h3>
+    <div class="summary-row">
+      <span class="label">Product</span>
+      <span class="value" id="summary-product">Auto Repair Competitive Intel Report</span>
+    </div>
+    <div class="summary-row">
+      <span class="label">Delivery</span>
+      <span class="value" id="summary-delivery">Within 24 hours of payment</span>
+    </div>
+    <div class="summary-row">
+      <span class="label">Format</span>
+      <span class="value">PDF by email</span>
+    </div>
+    <div class="summary-total">
+      <span class="label">Total</span>
+      <span class="price" id="summary-price">$97</span>
+    </div>
+  </div>
+
+  <form id="order-form" method="POST" action="/api/order">
+    <input type="hidden" name="type" id="type-field" value="auto">
+
+    <div class="form-grid">
+      <div>
+        <label for="name">Full Name <span class="required">*</span></label>
+        <input type="text" id="name" name="name" required placeholder="Mike Johnson">
+      </div>
+      <div>
+        <label for="email">Email <span class="required">*</span></label>
+        <input type="email" id="email" name="email" required placeholder="mike@autorepairshop.com">
+      </div>
+      <div>
+        <label for="phone">Phone</label>
+        <input type="tel" id="phone" name="phone" placeholder="(916) 555-0100">
+      </div>
+      <div>
+        <label for="business_name">Shop Name <span class="required">*</span></label>
+        <input type="text" id="business_name" name="business_name" required placeholder="Midtown Auto Repair">
+      </div>
+      <div class="form-full">
+        <label for="location">Shop Location <span class="required">*</span></label>
+        <input type="text" id="location" name="location" required placeholder="Sacramento, CA or zip code">
+      </div>
+      <div class="form-full">
+        <label for="competitors">Competitor Shops <span class="required">*</span></label>
+        <textarea id="competitors" name="competitors" required placeholder="Which shops do you want intel on? List shop names, addresses, or just neighborhoods.&#10;Examples:&#10;Midas - Florin Rd&#10;Torino Auto - Midtown&#10;Any independent shop within 3 miles"></textarea>
+        <p class="field-note">We'll research these competitors for you. At least 2-3 recommended for the best report.</p>
+      </div>
+      <div class="form-full">
+        <label for="notes">Additional Notes</label>
+        <textarea id="notes" name="notes" placeholder="Anything else we should know? Specific services you want covered? Particular competitors you're worried about?"></textarea>
+      </div>
+    </div>
+
+    <button type="submit" class="submit-btn" id="submit-btn">Continue to Payment — $97 →</button>
+    <p class="submit-note">Secure payment via Stripe. You won't be charged until you confirm on the next page.</p>
+  </form>
+</main>
+
+<footer>
+  <p>Questions? Email <a href="mailto:hello@intelpulse.net">hello@intelpulse.net</a></p>
+</footer>
+
+<script>
+const VERTICALS = {
+  auto: {
+    name: 'Auto Repair Shops',
+    price: '$97',
+    deliveryTime: 'Within 24 hours of payment',
+    productName: 'Auto Repair Competitive Intel Report',
+    formTitle: 'Order Your Auto Intel Report',
+    formSubtitle: 'Fill this out and you\'ll be redirected to secure payment. Your report will be delivered within 24 hours of payment confirmation.',
+    badge: 'Auto Repair',
+  },
+};
+
+const params = new URLSearchParams(window.location.search);
+const type = params.get('type') || 'auto';
+const v = VERTICALS[type] || VERTICALS.auto;
+
+// Populate vertical-specific copy
+document.getElementById('vertical-badge').textContent = v.badge;
+document.getElementById('form-title').textContent = v.formTitle;
+document.getElementById('form-sub').textContent = v.formSubtitle;
+document.getElementById('summary-product').textContent = v.productName;
+document.getElementById('summary-delivery').textContent = v.deliveryTime;
+document.getElementById('summary-price').textContent = v.price;
+document.getElementById('type-field').value = type;
+document.getElementById('submit-btn').textContent = `Continue to Payment — ${v.price} →`;
+
+// Form submission
+const form = document.getElementById('order-form');
+const errorBox = document.getElementById('error-box');
+const submitBtn = document.getElementById('submit-btn');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  errorBox.classList.remove('show');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Processing…';
+
+  const formData = new FormData(form);
+  const data = Object.fromEntries(formData);
+
+  try {
+    const res = await fetch('/api/order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || 'Something went wrong');
+    }
+
+    // Follow the redirect
+    window.location.href = res.url;
+  } catch (err) {
+    errorBox.textContent = 'Error: ' + err.message;
+    errorBox.classList.add('show');
+    submitBtn.disabled = false;
+    submitBtn.textContent = `Continue to Payment — ${v.price} →`;
+  }
+});
+</script>
+
+</body>
+</html>

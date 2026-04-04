@@ -1,0 +1,20 @@
+[
+  {
+    "id": "95eed5c7-280c-44f0-8cd7-b26982c052dc",
+    "type": "auto",
+    "status": "paid",
+    "created_at": "2026-04-04T00:22:28.533Z",
+    "updated_at": "2026-04-04T00:22:39.862Z",
+    "name": "Mike Johnson",
+    "email": "mike@midtownauto.com",
+    "phone": "916-555-0100",
+    "business_name": "Midtown Auto Repair",
+    "location": "Sacramento, CA",
+    "competitors": "Midas Florin Rd\nTorino Auto Midtown",
+    "notes": "",
+    "stripe_session_id": "",
+    "stripe_payment_status": "paid",
+    "report_delivered_at": null,
+    "fulfillment_notes": ""
+  }
+]
