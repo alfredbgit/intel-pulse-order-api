@@ -171,8 +171,9 @@ function getVertical(type) {
 }
 
 // Serve order form page
-app.post('/api/test-post-json', (req, res) => {
+app.post('/api/test-post-json', async (req, res) => {
   console.log('test-post-json body:', JSON.stringify(req.body));
+  await new Promise(r => setTimeout(r, 100));
   res.json({ received: true, body: req.body });
 });
 
