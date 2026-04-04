@@ -9,18 +9,20 @@ const stripeKey = process.env.STRIPE_KEY || '';
 const stripe = Stripe(stripeKey);
 
 // Test connectivity
-app.get('/api/test-net', async (req, res) => {
-  try {
-    let ok = false;
-    try {
-      const r = await fetch('https://api.stripe.com/v1/balance', {
-        headers: { 'Authorization': 'Bearer ' + stripeKey },
-        signal: AbortSignal.timeout(5000)
-      });
-      ok = r.ok;
-    } catch(e) { ok = false; }
-    res.json({ stripeReach: ok, hasKey: !!stripeKey, prefix: stripeKey ? stripeKey.substring(0,7)+'...' : 'none' });
-  } catch(e) { res.json({ error: e.message }); }
+app.get('/api/test-net', (req, res) => {
+  const https = require('https');
+  const options = {
+    hostname: 'api.stripe.com',
+    path: '/v1/balance',
+    method: 'GET',
+    headers: { 'Authorization': 'Bearer ' + stripeKey }
+  };
+  const req2 = https.request(options, (r) => {
+    res.json({ stripeStatus: r.statusCode, hasKey: !!stripeKey });
+  });
+  req2.on('error', (e) => res.json({ stripeError: e.message }));
+  req2.setTimeout(5000, () => { req2.destroy(); res.json({ stripeError: 'timeout' }); });
+  req2.end();
 });
 
 const app = express();
