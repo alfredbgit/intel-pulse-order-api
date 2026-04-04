@@ -195,13 +195,14 @@ form.addEventListener('submit', async (e) => {
       body: JSON.stringify(data),
     });
 
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(text || 'Something went wrong');
+    const result = await res.json();
+
+    if (!res.ok || result.error) {
+      throw new Error(result.error || 'Something went wrong');
     }
 
-    // Follow the redirect
-    window.location.href = res.url;
+    // Redirect to Stripe Checkout
+    window.location.href = result.checkoutUrl;
   } catch (err) {
     errorBox.textContent = 'Error: ' + err.message;
     errorBox.classList.add('show');

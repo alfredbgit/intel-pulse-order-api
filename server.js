@@ -2,6 +2,10 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const db = require('./database');
+const Stripe = require('stripe');
+
+// Load Stripe with secret key from env
+const stripe = Stripe(process.env.STRIPE_KEY || 'sk_live_placeholder');
 
 const app = express();
 app.use(express.json());
@@ -12,14 +16,13 @@ app.use(express.static(path.join(__dirname, 'public')));
 const verticals = {
   auto: {
     name: 'Auto Repair Shops',
-    stripeLink: 'https://buy.stripe.com/3cIcN5efZbCB06ra2S0x200',
-    price: '$97',
-    deliveryTime: '24 hours',
+    price: 97, // in cents
+    priceId: null, // set if using Stripe Price ID (for subscription/recurring)
     productName: 'Auto Repair Competitive Intel Report',
-    heroTitle: 'Auto Repair Competitive Intel',
-    heroSubtitle: 'Know what your local competitors are charging. Full pricing analysis delivered in 24 hours.',
+    description: 'Full competitive intel report for auto repair shops. Delivered as PDF within 24 hours.',
+    deliveryTime: '24 hours',
   },
-  // Future: hvac: { ... }, dental: { ... }
+  // Future: hvac: { price: 97, productName: 'HVAC Competitive Intel Report', ... }
 };
 
 function getVertical(type) {
@@ -40,38 +43,99 @@ app.get('/order/success', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'thank-you.html'));
 });
 
-// Stripe return — update order to paid
-app.get('/order/return', (req, res) => {
-  const { order_id, type } = req.query;
-  if (order_id) {
-    const order = db.getOrder(order_id);
-    if (order) {
-      db.updateStatus(order_id, 'paid', 'paid');
-    }
+// Stripe return — verify session and mark order paid
+app.get('/order/return', async (req, res) => {
+  const { session_id, type } = req.query;
+  if (!session_id) {
+    return res.redirect('/order/success?error=no_session');
   }
-  res.redirect('/order/success?order_id=' + (order_id || '') + '&type=' + (type || 'auto'));
+
+  try {
+    // Verify the session with Stripe
+    const session = await stripe.checkout.sessions.retrieve(session_id);
+    
+    if (session.payment_status === 'paid') {
+      // Find order by stripe session ID and mark paid
+      const orders = db.listOrders();
+      const order = orders.find(o => o.stripe_session_id === session_id);
+      if (order) {
+        db.updateStatus(order.id, 'paid', 'paid');
+      }
+      return res.redirect('/order/success?order_id=' + (order ? order.id : '') + '&status=paid&type=' + (type || 'auto'));
+    } else {
+      return res.redirect('/order/success?status=' + session.payment_status + '&type=' + (type || 'auto'));
+    }
+  } catch (err) {
+    console.error('Stripe session retrieval error:', err.message);
+    return res.redirect('/order/success?error=verification_failed');
+  }
 });
 
-// Create order and redirect to Stripe
-app.post('/api/order', (req, res) => {
+// Create order and redirect to Stripe Checkout
+app.post('/api/order', async (req, res) => {
   const { type, name, email, phone, business_name, location, competitors, notes } = req.body;
 
   const v = getVertical(type);
-  if (!v) return res.status(400).send('Invalid type');
+  if (!v) return res.status(400).json({ error: 'Invalid type' });
 
   if (!name || !email || !business_name || !location) {
-    return res.status(400).send('Missing required fields: name, email, business_name, location');
+    return res.status(400).json({ error: 'Missing required fields: name, email, business_name, location' });
   }
 
   const orderId = uuidv4();
-  db.createOrder({ id: orderId, type, name, email, phone, business_name, location, competitors, notes });
+  const stripeSessionId = 'cs_' + uuidv4().replace(/-/g, '');
 
-  // Redirect to Stripe with order ID as a query param
-  const stripeUrl = new URL(v.stripeLink);
-  stripeUrl.searchParams.set('order_id', orderId);
-  stripeUrl.searchParams.set('type', type);
+  // Create order in DB first (pending)
+  db.createOrder({ 
+    id: orderId, 
+    type, 
+    name, 
+    email, 
+    phone, 
+    business_name, 
+    location, 
+    competitors, 
+    notes 
+  });
 
-  res.redirect(stripeUrl.toString());
+  try {
+    // Create Stripe Checkout Session
+    const sessionParams = {
+      payment_method_types: ['card'],
+      mode: 'payment',
+      customer_email: email,
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: v.productName,
+              description: v.description + ' — Order ID: ' + orderId,
+            },
+            unit_amount: v.price * 100, // price in cents
+          },
+          quantity: 1,
+        },
+      ],
+      success_url: 'https://order-api.intelpulse.net/order/return?session_id={CHECKOUT_SESSION_ID}&type=' + type,
+      cancel_url: 'https://order-api.intelpulse.net/order/cancel?type=' + type,
+      metadata: {
+        order_id: orderId,
+        type: type,
+      },
+    };
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
+
+    // Update order with stripe session ID
+    db.setStripeSession(orderId, session.id);
+
+    // Return the checkout URL to the frontend
+    res.json({ checkoutUrl: session.url, orderId });
+  } catch (err) {
+    console.error('Stripe error:', err.message);
+    res.status(500).json({ error: 'Failed to create checkout session: ' + err.message });
+  }
 });
 
 // Get order status (for thank-you page polling)
@@ -83,21 +147,14 @@ app.get('/api/order/:id', (req, res) => {
     status: order.status,
     type: order.type,
     business_name: order.business_name,
+    email: order.email,
     created_at: order.created_at,
   });
 });
 
-// Mark order as paid (called from return URL with session data)
-app.post('/api/order/:id/confirm-payment', (req, res) => {
-  const order = db.getOrder(req.params.id);
-  if (!order) return res.status(404).json({ error: 'Order not found' });
-  db.updateStatus(order.id, 'paid', 'paid');
-  res.json({ success: true, status: 'paid' });
-});
-
 // Cancel URL — back to order form
 app.get('/order/cancel', (req, res) => {
-  res.redirect('/order?type=' + (req.query.type || 'auto'));
+  res.redirect('/order?type=' + (req.query.type || 'auto') + '&cancelled=1');
 });
 
 // Fulfill an order (manual for beta)
