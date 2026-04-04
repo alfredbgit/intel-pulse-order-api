@@ -10,9 +10,7 @@ const https = require('https');
 
 // Helper: create Stripe Checkout Session via raw HTTPS
 function createStripeCheckoutSession(params) {
-  console.log('createStripeCheckoutSession called, key prefix:', stripeKey ? stripeKey.substring(0,7) : 'NONE');
   return new Promise((resolve, reject) => {
-    // URL-encode nested Stripe params
     const body = [
       'payment_method_types[0]=card',
       'mode=payment',
@@ -39,13 +37,10 @@ function createStripeCheckoutSession(params) {
       }
     };
 
-    console.log('Creating HTTPS request to Stripe, body length:', Buffer.byteLength(body));
     const req = https.request(options, (res) => {
-      console.log('Stripe response status:', res.statusCode);
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
-        console.log('Stripe response data:', data.substring(0, 200));
         try {
           const parsed = JSON.parse(data);
           if (parsed.error) return reject(new Error(parsed.error.message));
@@ -53,12 +48,10 @@ function createStripeCheckoutSession(params) {
         } catch(e) { reject(new Error('Failed to parse Stripe response')); }
       });
     });
-    req.on('error', (e) => { console.error('HTTPS request error:', e.message); reject(e); });
-    req.setTimeout(10000, () => { console.error('Stripe API timeout'); req.destroy(); reject(new Error('Stripe API timeout')); });
-    console.log('Writing body to Stripe...');
+    req.on('error', reject);
+    req.setTimeout(10000, () => { req.destroy(); reject(new Error('Stripe API timeout')); });
     req.write(body);
     req.end();
-    console.log('Request sent');
   });
 }
 
@@ -90,29 +83,6 @@ function retrieveStripeSession(sessionId) {
 const app = express();
 
 // Debug: test network connectivity to Stripe
-app.post('/api/test-net-post', (req, res) => {
-  console.log('POST test-net-post body:', JSON.stringify(req.body));
-  try {
-    const https = require('https');
-    const body = 'payment_method_types[0]=card&mode=payment&customer_email=' + encodeURIComponent(req.body.email || 'test@test.com') + '&line_items[0][price_data][currency]=usd&line_items[0][price_data][product_data][name]=Test&line_items[0][price_data][unit_amount]=9700&line_items[0][quantity]=1&success_url=https://test.com&cancel_url=https://test.com';
-    const options = {
-      hostname: 'api.stripe.com',
-      path: '/v1/checkout/sessions',
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + stripeKey, 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body) }
-    };
-    const req2 = https.request(options, (r) => {
-      let data = '';
-      r.on('data', chunk => data += chunk);
-      r.on('end', () => { res.json({ stripeStatus: r.statusCode, body: data.substring(0, 200) }); });
-    });
-    req2.on('error', (e) => { console.error('HTTPS error:', e.message); res.json({ error: e.message }); });
-    req2.setTimeout(10000, () => { req2.destroy(); res.json({ error: 'timeout' }); });
-    req2.write(body);
-    req2.end();
-  } catch(e) { console.error('Handler error:', e.message); res.json({ error: e.message }); }
-});
-
 app.get('/api/test-net', (req, res) => {
   if (!stripeKey) return res.json({ error: 'No stripe key' });
   const https = require('https');
@@ -177,12 +147,6 @@ function getVertical(type) {
 }
 
 // Serve order form page
-app.post('/api/test-post-json', async (req, res) => {
-  console.log('test-post-json body:', JSON.stringify(req.body));
-  await new Promise(r => setTimeout(r, 100));
-  res.json({ received: true, body: req.body });
-});
-
 app.get('/order', (req, res) => {
   const v = getVertical(req.query.type);
   if (!v) {
@@ -209,10 +173,10 @@ app.get('/order/return', async (req, res) => {
     
     if (session.payment_status === 'paid') {
       // Find order by stripe session ID and mark paid
-      const orders = db.listOrders();
+      const orders = await db.listOrders();
       const order = orders.find(o => o.stripe_session_id === session_id);
       if (order) {
-        db.updateStatus(order.id, 'paid', 'paid');
+        await db.updateStatus(order.id, 'paid', 'paid');
       }
       return res.redirect('/order/success?order_id=' + (order ? order.id : '') + '&status=paid&type=' + (type || 'auto'));
     } else {
@@ -226,11 +190,9 @@ app.get('/order/return', async (req, res) => {
 
 // Create order and redirect to Stripe Checkout
 app.post('/api/order', async (req, res) => {
-  console.log('=== /api/order called ===');
   const { type, name, email, phone, business_name, location, competitors, notes } = req.body;
 
   const v = getVertical(type);
-  console.log('v:', v ? v.name : 'null');
   if (!v) return res.status(400).json({ error: 'Invalid type' });
 
   if (!name || !email || !business_name || !location) {
@@ -238,23 +200,21 @@ app.post('/api/order', async (req, res) => {
   }
 
   const orderId = uuidv4();
-  console.log('orderId:', orderId);
-  res.json({ debug: true, orderId }); return;
 
-  // Create order in DB first (pending) - COMMENTED OUT FOR TEST
-  // db.createOrder({ 
-  //   id: orderId, 
-  //   type, 
-  //   name, 
-  //   email, 
-  //   phone, 
-  //   business_name, 
-  //   location, 
-  //   competitors, 
-  //   notes 
-  // });
+  // Create order in DB first (pending)
+  await db.createOrder({ 
+    id: orderId, 
+    type, 
+    name, 
+    email, 
+    phone, 
+    business_name, 
+    location, 
+    competitors, 
+    notes 
+  });
 
-  console.log('ORDER REQUEST: type=' + type + ', email=' + email + ', business=' + business_name);
+
   try {
     if (!stripeKey) {
       console.error('STRIPE_KEY not configured');
@@ -280,7 +240,7 @@ app.post('/api/order', async (req, res) => {
     }
 
     // Update order with stripe session ID
-    db.setStripeSession(orderId, session.id);
+    await db.setStripeSession(orderId, session.id);
 
     // Return the checkout URL to the frontend
     res.json({ checkoutUrl: session.url, orderId });
@@ -291,8 +251,8 @@ app.post('/api/order', async (req, res) => {
 });
 
 // Get order status (for thank-you page polling)
-app.get('/api/order/:id', (req, res) => {
-  const order = db.getOrder(req.params.id);
+app.get('/api/order/:id', async (req, res) => {
+  const order = await db.getOrder(req.params.id);
   if (!order) return res.status(404).json({ error: 'Order not found' });
   res.json({
     id: order.id,
@@ -310,24 +270,18 @@ app.get('/order/cancel', (req, res) => {
 });
 
 // Fulfill an order (manual for beta)
-app.post('/api/order/:id/fulfill', (req, res) => {
+app.post('/api/order/:id/fulfill', async (req, res) => {
   const { notes } = req.body;
-  const order = db.getOrder(req.params.id);
+  const order = await db.getOrder(req.params.id);
   if (!order) return res.status(404).json({ error: 'Order not found' });
-  db.markFulfilled(order.id, notes || '');
+  await db.markFulfilled(order.id, notes || '');
   res.json({ success: true });
 });
 
 // List all orders (for admin)
-app.get('/api/orders', (req, res) => {
-  const orders = db.listOrders();
+app.get('/api/orders', async (req, res) => {
+  const orders = await db.listOrders();
   res.json(orders);
-});
-
-// Test POST endpoint
-app.post('/api/test-post', (req, res) => {
-  console.log('POST /api/test-post called');
-  res.json({ ok: true, method: 'POST', body: req.body });
 });
 
 const PORT = process.env.PORT || 3000;
