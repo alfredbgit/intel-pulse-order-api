@@ -171,6 +171,11 @@ function getVertical(type) {
 }
 
 // Serve order form page
+app.post('/api/test-post-json', (req, res) => {
+  console.log('test-post-json body:', JSON.stringify(req.body));
+  res.json({ received: true, body: req.body });
+});
+
 app.get('/order', (req, res) => {
   const v = getVertical(req.query.type);
   if (!v) {
