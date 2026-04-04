@@ -8,6 +8,21 @@ const Stripe = require('stripe');
 const stripeKey = process.env.STRIPE_KEY || '';
 const stripe = Stripe(stripeKey);
 
+// Test connectivity
+app.get('/api/test-net', async (req, res) => {
+  try {
+    let ok = false;
+    try {
+      const r = await fetch('https://api.stripe.com/v1/balance', {
+        headers: { 'Authorization': 'Bearer ' + stripeKey },
+        signal: AbortSignal.timeout(5000)
+      });
+      ok = r.ok;
+    } catch(e) { ok = false; }
+    res.json({ stripeReach: ok, hasKey: !!stripeKey, prefix: stripeKey ? stripeKey.substring(0,7)+'...' : 'none' });
+  } catch(e) { res.json({ error: e.message }); }
+});
+
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -130,6 +145,10 @@ app.post('/api/order', async (req, res) => {
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error('Stripe API timeout')), 10000)
     );
+    if (!stripeKey) {
+      console.error('STRIPE_KEY not configured - cannot create checkout session');
+      return res.status(500).json({ error: 'Payment system not configured. Please contact hello@intelpulse.net' });
+    }
     const session = await Promise.race([
       stripe.checkout.sessions.create(sessionParams),
       timeoutPromise
