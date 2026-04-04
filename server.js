@@ -227,12 +227,10 @@ app.get('/order/return', async (req, res) => {
 // Create order and redirect to Stripe Checkout
 app.post('/api/order', async (req, res) => {
   console.log('=== /api/order called ===');
-  res.json({ received: true });
-  return;
-
   const { type, name, email, phone, business_name, location, competitors, notes } = req.body;
 
   const v = getVertical(type);
+  console.log('v:', v ? v.name : 'null');
   if (!v) return res.status(400).json({ error: 'Invalid type' });
 
   if (!name || !email || !business_name || !location) {
@@ -256,6 +254,7 @@ app.post('/api/order', async (req, res) => {
   });
 
   console.log('ORDER REQUEST: type=' + type + ', email=' + email + ', business=' + business_name);
+  res.json({ debug: 'before stripe call', orderId }); return;
   try {
     if (!stripeKey) {
       console.error('STRIPE_KEY not configured');
