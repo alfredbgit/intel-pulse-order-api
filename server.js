@@ -6,6 +6,8 @@ const Stripe = require('stripe');
 
 // Load Stripe with secret key from env
 const stripeKey = process.env.STRIPE_KEY || '';
+console.log('DIRNAME:', __dirname);
+console.log('STRIPE_KEY exists:', !!process.env.STRIPE_KEY);
 let stripe;
 try {
   stripe = Stripe(stripeKey);
