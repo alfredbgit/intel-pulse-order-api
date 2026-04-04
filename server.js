@@ -84,6 +84,10 @@ function retrieveStripeSession(sessionId) {
 const app = express();
 
 // Debug: test network connectivity to Stripe
+app.post('/api/test-net-post', (req, res) => {
+  res.json({ received: true, body: req.body });
+});
+
 app.get('/api/test-net', (req, res) => {
   if (!stripeKey) return res.json({ error: 'No stripe key' });
   const https = require('https');
