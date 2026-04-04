@@ -85,24 +85,26 @@ const app = express();
 
 // Debug: test network connectivity to Stripe
 app.post('/api/test-net-post', (req, res) => {
-  // Test POST with actual HTTPS call
-  const https = require('https');
-  const body = 'payment_method_types[0]=card&mode=payment&customer_email=' + encodeURIComponent(req.body.email || 'test@test.com') + '&line_items[0][price_data][currency]=usd&line_items[0][price_data][product_data][name]=Test&line_items[0][price_data][unit_amount]=9700&line_items[0][quantity]=1&success_url=https://test.com&cancel_url=https://test.com';
-  const options = {
-    hostname: 'api.stripe.com',
-    path: '/v1/checkout/sessions',
-    method: 'POST',
-    headers: { 'Authorization': 'Bearer ' + stripeKey, 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body) }
-  };
-  const req2 = https.request(options, (r) => {
-    let data = '';
-    r.on('data', chunk => data += chunk);
-    r.on('end', () => { res.json({ stripeStatus: r.statusCode, body: data.substring(0, 200) }); });
-  });
-  req2.on('error', (e) => res.json({ error: e.message }));
-  req2.setTimeout(10000, () => { req2.destroy(); res.json({ error: 'timeout' }); });
-  req2.write(body);
-  req2.end();
+  console.log('POST test-net-post body:', JSON.stringify(req.body));
+  try {
+    const https = require('https');
+    const body = 'payment_method_types[0]=card&mode=payment&customer_email=' + encodeURIComponent(req.body.email || 'test@test.com') + '&line_items[0][price_data][currency]=usd&line_items[0][price_data][product_data][name]=Test&line_items[0][price_data][unit_amount]=9700&line_items[0][quantity]=1&success_url=https://test.com&cancel_url=https://test.com';
+    const options = {
+      hostname: 'api.stripe.com',
+      path: '/v1/checkout/sessions',
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + stripeKey, 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body) }
+    };
+    const req2 = https.request(options, (r) => {
+      let data = '';
+      r.on('data', chunk => data += chunk);
+      r.on('end', () => { res.json({ stripeStatus: r.statusCode, body: data.substring(0, 200) }); });
+    });
+    req2.on('error', (e) => { console.error('HTTPS error:', e.message); res.json({ error: e.message }); });
+    req2.setTimeout(10000, () => { req2.destroy(); res.json({ error: 'timeout' }); });
+    req2.write(body);
+    req2.end();
+  } catch(e) { console.error('Handler error:', e.message); res.json({ error: e.message }); }
 });
 
 app.get('/api/test-net', (req, res) => {
