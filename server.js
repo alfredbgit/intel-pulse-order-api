@@ -6,10 +6,17 @@ const Stripe = require('stripe');
 
 // Load Stripe with secret key from env
 const stripeKey = process.env.STRIPE_KEY || '';
-const stripe = Stripe(stripeKey);
+let stripe;
+try {
+  stripe = Stripe(stripeKey);
+} catch(e) {
+  console.error('Stripe init error:', e.message);
+  stripe = null;
+}
 
 // Test connectivity
 app.get('/api/test-net', (req, res) => {
+  if (!stripeKey) return res.json({ error: 'No stripe key' });
   const https = require('https');
   const options = {
     hostname: 'api.stripe.com',
@@ -147,7 +154,7 @@ app.post('/api/order', async (req, res) => {
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error('Stripe API timeout')), 10000)
     );
-    if (!stripeKey) {
+    if (!stripeKey || !stripe) {
       console.error('STRIPE_KEY not configured - cannot create checkout session');
       return res.status(500).json({ error: 'Payment system not configured. Please contact hello@intelpulse.net' });
     }
