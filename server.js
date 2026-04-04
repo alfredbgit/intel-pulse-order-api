@@ -125,7 +125,14 @@ app.post('/api/order', async (req, res) => {
       },
     };
 
-    const session = await stripe.checkout.sessions.create(sessionParams);
+    // Timeout for Stripe API call (10 seconds)
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Stripe API timeout')), 10000)
+    );
+    const session = await Promise.race([
+      stripe.checkout.sessions.create(sessionParams),
+      timeoutPromise
+    ]);
 
     // Update order with stripe session ID
     db.setStripeSession(orderId, session.id);
