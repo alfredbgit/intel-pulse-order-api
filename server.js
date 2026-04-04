@@ -216,6 +216,7 @@ app.post('/api/order', async (req, res) => {
     notes 
   });
 
+  console.log('ORDER REQUEST: type=' + type + ', email=' + email + ', business=' + business_name);
   try {
     if (!stripeKey) {
       console.error('STRIPE_KEY not configured');
