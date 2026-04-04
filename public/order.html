@@ -31,6 +31,7 @@
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
     .form-full { grid-column: 1 / -1; }
     label { display: block; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); margin-bottom: 8px; font-family: 'Oswald', sans-serif; }
+    .field-note-label { font-size: 0.72rem; font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--text-muted); opacity: 0.7; }
     input, textarea, select { width: 100%; padding: 12px 16px; background: var(--bg-card); border: 1.5px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 0.95rem; font-family: 'Inter', sans-serif; transition: border-color 0.15s; }
     input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
     textarea { resize: vertical; min-height: 100px; }
@@ -128,9 +129,9 @@
         <input type="text" id="location" name="location" required placeholder="Sacramento, CA or zip code">
       </div>
       <div class="form-full">
-        <label for="competitors">Competitor Shops <span class="required">*</span></label>
-        <textarea id="competitors" name="competitors" required placeholder="Which shops do you want intel on? List shop names, addresses, or just neighborhoods.&#10;Examples:&#10;Midas - Florin Rd&#10;Torino Auto - Midtown&#10;Any independent shop within 3 miles"></textarea>
-        <p class="field-note">We'll research these competitors for you. At least 2-3 recommended for the best report.</p>
+        <label for="competitors">Competitor Shops <span class="field-note-label">(optional)</span></label>
+        <textarea id="competitors" name="competitors" placeholder="List any specific competitors you want us to research.&#10;Examples:&#10;Midas - Florin Rd&#10;Torino Auto - Midtown&#10;Or just describe: 'any shop within 3 miles of 95823'"></textarea>
+        <p class="field-note">Not sure who your competitors are? Leave this blank — we'll identify and research up to 10 competitors in your area for you.</p>
       </div>
       <div class="form-full">
         <label for="notes">Additional Notes</label>
