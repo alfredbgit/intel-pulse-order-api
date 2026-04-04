@@ -151,18 +151,27 @@ app.post('/api/order', async (req, res) => {
       },
     };
 
-    // Timeout for Stripe API call (10 seconds)
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Stripe API timeout')), 10000)
-    );
     if (!stripeKey || !stripe) {
       console.error('STRIPE_KEY not configured - cannot create checkout session');
       return res.status(500).json({ error: 'Payment system not configured. Please contact hello@intelpulse.net' });
     }
-    const session = await Promise.race([
-      stripe.checkout.sessions.create(sessionParams),
-      timeoutPromise
-    ]);
+
+    // Create checkout session with timeout
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    let session;
+    try {
+      session = await stripe.checkout.sessions.create(sessionParams, { signal: controller.signal });
+    } catch (err) {
+      clearTimeout(timeout);
+      if (err.name === 'AbortError') {
+        console.error('Stripe API timeout');
+        return res.status(500).json({ error: 'Payment system timeout. Please try again.' });
+      }
+      console.error('Stripe error:', err.message);
+      return res.status(500).json({ error: 'Failed to create checkout session: ' + err.message });
+    }
+    clearTimeout(timeout);
 
     // Update order with stripe session ID
     db.setStripeSession(orderId, session.id);
