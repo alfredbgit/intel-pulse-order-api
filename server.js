@@ -20,17 +20,42 @@ const app = express();
 app.get('/api/test-net', (req, res) => {
   if (!stripeKey) return res.json({ error: 'No stripe key' });
   const https = require('https');
+  
+  // Test POST to Stripe
+  const postData = JSON.stringify({
+    payment_method_types: ['card'],
+    mode: 'payment',
+    line_items: [{ price_data: { currency: 'usd', product_data: { name: 'Test' }, unit_amount: 100 }, quantity: 1 }],
+    success_url: 'https://test.com/success?session_id={CHECKOUT_SESSION_ID}',
+    cancel_url: 'https://test.com/cancel'
+  });
+  
   const options = {
     hostname: 'api.stripe.com',
-    path: '/v1/balance',
-    method: 'GET',
-    headers: { 'Authorization': 'Bearer ' + stripeKey }
+    path: '/v1/checkout/sessions',
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + stripeKey,
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(postData)
+    }
   };
+  
   const req2 = https.request(options, (r) => {
-    res.json({ stripeStatus: r.statusCode, hasKey: !!stripeKey });
+    let data = '';
+    r.on('data', chunk => data += chunk);
+    r.on('end', () => {
+      try {
+        const parsed = JSON.parse(data);
+        res.json({ stripePOST: r.statusCode, hasSession: !!parsed.id, sessionId: parsed.id || parsed.error?.message });
+      } catch(e) {
+        res.json({ stripePOST: r.statusCode, raw: data.substring(0, 200) });
+      }
+    });
   });
   req2.on('error', (e) => res.json({ stripeError: e.message }));
-  req2.setTimeout(5000, () => { req2.destroy(); res.json({ stripeError: 'timeout' }); });
+  req2.setTimeout(10000, () => { req2.destroy(); res.json({ stripeError: 'timeout' }); });
+  req2.write(postData);
   req2.end();
 });
 
