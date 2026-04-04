@@ -10,6 +10,7 @@ const https = require('https');
 
 // Helper: create Stripe Checkout Session via raw HTTPS
 function createStripeCheckoutSession(params) {
+  console.log('createStripeCheckoutSession called, key prefix:', stripeKey ? stripeKey.substring(0,7) : 'NONE');
   return new Promise((resolve, reject) => {
     // URL-encode nested Stripe params
     const body = [
@@ -38,10 +39,13 @@ function createStripeCheckoutSession(params) {
       }
     };
 
+    console.log('Creating HTTPS request to Stripe, body length:', Buffer.byteLength(body));
     const req = https.request(options, (res) => {
+      console.log('Stripe response status:', res.statusCode);
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
+        console.log('Stripe response data:', data.substring(0, 200));
         try {
           const parsed = JSON.parse(data);
           if (parsed.error) return reject(new Error(parsed.error.message));
@@ -49,10 +53,12 @@ function createStripeCheckoutSession(params) {
         } catch(e) { reject(new Error('Failed to parse Stripe response')); }
       });
     });
-    req.on('error', reject);
-    req.setTimeout(10000, () => { req.destroy(); reject(new Error('Stripe API timeout')); });
+    req.on('error', (e) => { console.error('HTTPS request error:', e.message); reject(e); });
+    req.setTimeout(10000, () => { console.error('Stripe API timeout'); req.destroy(); reject(new Error('Stripe API timeout')); });
+    console.log('Writing body to Stripe...');
     req.write(body);
     req.end();
+    console.log('Request sent');
   });
 }
 
@@ -220,6 +226,8 @@ app.get('/order/return', async (req, res) => {
 
 // Create order and redirect to Stripe Checkout
 app.post('/api/order', async (req, res) => {
+  console.log('=== /api/order called ===');
+  console.log('body:', JSON.stringify(req.body));
   const { type, name, email, phone, business_name, location, competitors, notes } = req.body;
 
   const v = getVertical(type);
