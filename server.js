@@ -227,7 +227,9 @@ app.get('/order/return', async (req, res) => {
 // Create order and redirect to Stripe Checkout
 app.post('/api/order', async (req, res) => {
   console.log('=== /api/order called ===');
-  console.log('body:', JSON.stringify(req.body));
+  res.json({ received: true });
+  return;
+
   const { type, name, email, phone, business_name, location, competitors, notes } = req.body;
 
   const v = getVertical(type);
