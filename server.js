@@ -2,16 +2,83 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const db = require('./database');
-const Stripe = require('stripe');
+
 
 // Load Stripe with secret key from env
 const stripeKey = process.env.STRIPE_KEY || '';
-let stripe;
-try {
-  stripe = Stripe(stripeKey);
-} catch(e) {
-  console.error('Stripe init error:', e.message);
-  stripe = null;
+const https = require('https');
+
+// Helper: create Stripe Checkout Session via raw HTTPS
+function createStripeCheckoutSession(params) {
+  return new Promise((resolve, reject) => {
+    // URL-encode nested Stripe params
+    const body = [
+      'payment_method_types[0]=card',
+      'mode=payment',
+      'customer_email=' + encodeURIComponent(params.customerEmail),
+      'line_items[0][price_data][currency]=usd',
+      'line_items[0][price_data][product_data][name]=' + encodeURIComponent(params.productName),
+      'line_items[0][price_data][product_data][description]=' + encodeURIComponent(params.productDescription),
+      'line_items[0][price_data][unit_amount]=' + params.unitAmount,
+      'line_items[0][quantity]=1',
+      'success_url=' + encodeURIComponent(params.successUrl),
+      'cancel_url=' + encodeURIComponent(params.cancelUrl),
+      'metadata[order_id]=' + encodeURIComponent(params.orderId),
+      'metadata[type]=' + encodeURIComponent(params.type),
+    ].join('&');
+
+    const options = {
+      hostname: 'api.stripe.com',
+      path: '/v1/checkout/sessions',
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + stripeKey,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': Buffer.byteLength(body),
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.error) return reject(new Error(parsed.error.message));
+          resolve(parsed);
+        } catch(e) { reject(new Error('Failed to parse Stripe response')); }
+      });
+    });
+    req.on('error', reject);
+    req.setTimeout(10000, () => { req.destroy(); reject(new Error('Stripe API timeout')); });
+    req.write(body);
+    req.end();
+  });
+}
+
+function retrieveStripeSession(sessionId) {
+  return new Promise((resolve, reject) => {
+    const options = {
+      hostname: 'api.stripe.com',
+      path: '/v1/checkout/sessions/' + sessionId,
+      method: 'GET',
+      headers: { 'Authorization': 'Bearer ' + stripeKey }
+    };
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.error) return reject(new Error(parsed.error.message));
+          resolve(parsed);
+        } catch(e) { reject(new Error('Failed to parse Stripe response')); }
+      });
+    });
+    req.on('error', reject);
+    req.setTimeout(10000, () => { req.destroy(); reject(new Error('Stripe API timeout')); });
+    req.end();
+  });
 }
 
 const app = express();
@@ -103,7 +170,7 @@ app.get('/order/return', async (req, res) => {
 
   try {
     // Verify the session with Stripe
-    const session = await stripe.checkout.sessions.retrieve(session_id);
+    const session = await retrieveStripeSession(session_id);
     
     if (session.payment_status === 'paid') {
       // Find order by stripe session ID and mark paid
@@ -150,53 +217,28 @@ app.post('/api/order', async (req, res) => {
   });
 
   try {
-    // Create Stripe Checkout Session
-    const sessionParams = {
-      payment_method_types: ['card'],
-      mode: 'payment',
-      customer_email: email,
-      line_items: [
-        {
-          price_data: {
-            currency: 'usd',
-            product_data: {
-              name: v.productName,
-              description: v.description + ' — Order ID: ' + orderId,
-            },
-            unit_amount: v.price * 100, // price in cents
-          },
-          quantity: 1,
-        },
-      ],
-      success_url: 'https://order-api.intelpulse.net/order/return?session_id={CHECKOUT_SESSION_ID}&type=' + type,
-      cancel_url: 'https://order-api.intelpulse.net/order/cancel?type=' + type,
-      metadata: {
-        order_id: orderId,
-        type: type,
-      },
-    };
-
-    if (!stripeKey || !stripe) {
-      console.error('STRIPE_KEY not configured - cannot create checkout session');
+    if (!stripeKey) {
+      console.error('STRIPE_KEY not configured');
       return res.status(500).json({ error: 'Payment system not configured. Please contact hello@intelpulse.net' });
     }
 
-    // Create checkout session with timeout
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
+    // Create checkout session via raw HTTPS (Stripe SDK hangs in Vercel serverless)
     let session;
     try {
-      session = await stripe.checkout.sessions.create(sessionParams, { signal: controller.signal });
+      session = await createStripeCheckoutSession({
+        customerEmail: email,
+        productName: v.productName,
+        productDescription: v.description + ' — Order ID: ' + orderId,
+        unitAmount: v.price * 100,
+        successUrl: 'https://order-api.intelpulse.net/order/return?session_id={CHECKOUT_SESSION_ID}&type=' + type,
+        cancelUrl: 'https://order-api.intelpulse.net/order/cancel?type=' + type,
+        orderId,
+        type,
+      });
     } catch (err) {
-      clearTimeout(timeout);
-      if (err.name === 'AbortError') {
-        console.error('Stripe API timeout');
-        return res.status(500).json({ error: 'Payment system timeout. Please try again.' });
-      }
       console.error('Stripe error:', err.message);
       return res.status(500).json({ error: 'Failed to create checkout session: ' + err.message });
     }
-    clearTimeout(timeout);
 
     // Update order with stripe session ID
     db.setStripeSession(orderId, session.id);
