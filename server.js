@@ -172,6 +172,12 @@ app.get('/api/orders', (req, res) => {
   res.json(orders);
 });
 
+// Test POST endpoint
+app.post('/api/test-post', (req, res) => {
+  console.log('POST /api/test-post called');
+  res.json({ ok: true, method: 'POST', body: req.body });
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`IntelPulse Order API running on port ${PORT}`);
