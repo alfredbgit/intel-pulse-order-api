@@ -1,7 +1,7 @@
 const fs = require('fs').promises;
 const path = require('path');
 
-const DB_FILE = path.join(__dirname, 'orders.json');
+const DB_FILE = path.join('/tmp', 'orders.json');
 
 async function loadDb() {
   try {
