@@ -6,8 +6,6 @@ const Stripe = require('stripe');
 
 // Load Stripe with secret key from env
 const stripeKey = process.env.STRIPE_KEY || '';
-console.log('DIRNAME:', __dirname);
-console.log('STRIPE_KEY exists:', !!process.env.STRIPE_KEY);
 let stripe;
 try {
   stripe = Stripe(stripeKey);
@@ -16,7 +14,9 @@ try {
   stripe = null;
 }
 
-// Test connectivity
+const app = express();
+
+// Debug: test network connectivity to Stripe
 app.get('/api/test-net', (req, res) => {
   if (!stripeKey) return res.json({ error: 'No stripe key' });
   const https = require('https');
@@ -34,7 +34,6 @@ app.get('/api/test-net', (req, res) => {
   req2.end();
 });
 
-const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
