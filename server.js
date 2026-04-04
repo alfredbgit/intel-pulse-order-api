@@ -238,23 +238,23 @@ app.post('/api/order', async (req, res) => {
   }
 
   const orderId = uuidv4();
-  const stripeSessionId = 'cs_' + uuidv4().replace(/-/g, '');
+  console.log('orderId:', orderId);
+  res.json({ debug: true, orderId }); return;
 
-  // Create order in DB first (pending)
-  db.createOrder({ 
-    id: orderId, 
-    type, 
-    name, 
-    email, 
-    phone, 
-    business_name, 
-    location, 
-    competitors, 
-    notes 
-  });
+  // Create order in DB first (pending) - COMMENTED OUT FOR TEST
+  // db.createOrder({ 
+  //   id: orderId, 
+  //   type, 
+  //   name, 
+  //   email, 
+  //   phone, 
+  //   business_name, 
+  //   location, 
+  //   competitors, 
+  //   notes 
+  // });
 
   console.log('ORDER REQUEST: type=' + type + ', email=' + email + ', business=' + business_name);
-  res.json({ debug: 'before stripe call', orderId }); return;
   try {
     if (!stripeKey) {
       console.error('STRIPE_KEY not configured');
