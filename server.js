@@ -8,16 +8,6 @@ const Stripe = require('stripe');
 const stripeKey = process.env.STRIPE_KEY || '';
 const stripe = Stripe(stripeKey);
 
-// Debug endpoint
-app.get('/api/debug', (req, res) => {
-  res.json({ 
-    hasKey: !!process.env.STRIPE_KEY, 
-    keyPrefix: process.env.STRIPE_KEY ? process.env.STRIPE_KEY.substring(0, 7) + '...' : 'missing',
-    nodeEnv: process.env.NODE_ENV,
-    vercelEnv: process.env.VERCEL_ENV
-  });
-});
-
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
