@@ -1,54 +1,64 @@
-const { Pool } = require('pg');
-const pool = new Pool({ connectionString: process.env.POSTGRES_URL, ssl: false });
+const { createClient } = require('@supabase/supabase-js');
 
-const COLLECTION = 'orders';
+const supabase = createClient(
+  'https://vvilnkzqdhydlwdxwokh.supabase.co',
+  'sb_publishable_-GcjGLB9X2XqBHDmLy39zA_tdXPt_WO'
+);
 
 async function createOrder({ id, type, name, email, phone, business_name, location, competitors, notes }) {
-  const result = await pool.query(
-    `INSERT INTO ${COLLECTION} (id, type, name, email, phone, business_name, location, competitors, notes)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-     RETURNING *`,
-    [id, type, name || '', email || '', phone || '', business_name || '', location || '', competitors || '', notes || '']
-  );
-  return result.rows[0];
+  const { data, error } = await supabase
+    .from('orders')
+    .insert([{
+      id,
+      type,
+      name: name || '',
+      email: email || '',
+      phone: phone || '',
+      business_name: business_name || '',
+      location: location || '',
+      competitors: competitors || '',
+      notes: notes || '',
+    }])
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
 }
 
 async function getOrder(id) {
-  const result = await pool.query(`SELECT * FROM ${COLLECTION} WHERE id = $1`, [id]);
-  return result.rows[0] || null;
+  const { data, error } = await supabase.from('orders').select('*').eq('id', id).single();
+  if (error && error.code !== 'PGRST116') throw error;
+  return data || null;
 }
 
 async function setStripeSession(id, stripe_session_id) {
-  await pool.query(
-    `UPDATE ${COLLECTION} SET stripe_session_id = $1, updated_at = NOW() WHERE id = $2`,
-    [stripe_session_id, id]
-  );
+  const { error } = await supabase
+    .from('orders')
+    .update({ stripe_session_id, updated_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw error;
 }
 
 async function updateStatus(id, status, stripe_payment_status) {
-  await pool.query(
-    `UPDATE ${COLLECTION} SET status = $1, stripe_payment_status = $2, updated_at = NOW() WHERE id = $3`,
-    [status, stripe_payment_status || '', id]
-  );
+  const { error } = await supabase
+    .from('orders')
+    .update({ status, stripe_payment_status: stripe_payment_status || '', updated_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw error;
 }
 
 async function markFulfilled(id, notes) {
-  await pool.query(
-    `UPDATE ${COLLECTION} SET status = 'fulfilled', report_delivered_at = NOW(), fulfillment_notes = $1, updated_at = NOW() WHERE id = $2`,
-    [notes || '', id]
-  );
+  const { error } = await supabase
+    .from('orders')
+    .update({ status: 'fulfilled', report_delivered_at: new Date().toISOString(), fulfillment_notes: notes || '', updated_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw error;
 }
 
 async function listOrders() {
-  const result = await pool.query(`SELECT * FROM ${COLLECTION} ORDER BY created_at DESC`);
-  return result.rows;
+  const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+  if (error) throw error;
+  return data;
 }
 
-module.exports = {
-  createOrder,
-  getOrder,
-  setStripeSession,
-  updateStatus,
-  markFulfilled,
-  listOrders,
-};
+module.exports = { createOrder, getOrder, setStripeSession, updateStatus, markFulfilled, listOrders };
