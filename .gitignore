@@ -2,3 +2,4 @@ node_modules/
 orders.json
 npm-debug.log
 .vercel
+.env.local
