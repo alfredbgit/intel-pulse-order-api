@@ -1,8 +1,14 @@
-# HEARTBEAT.md
+# HEARTBEAT.md — Logan
 
-## Memory Maintenance
+## Message Delivery
+- Weekly venture updates: Do NOT send directly to Discord — instead, append the update to `staff/logan/memory/YYYY-MM-DD.md` under a `## Venture Update` heading.
+- If the daily note already exists, never rewrite or replace it. Append only at EOF.
+- Alfred will review and deliver to Discord.
+- Discord channel is only for urgent/flag items that need immediate attention.
+- Do not append anything to the daily note for a clean heartbeat run with no venture change, no due weekly report, and no new staff deliverable. Clean runs should stay silent and return `HEARTBEAT_OK` only.
+- Append a daily-note entry only when there is a material state change, a blocker to escalate, or an actual weekly venture update to preserve.
 
-- Create your daily note file if it's missing `memory/YYYY-MM-DD.md`
-- Append major decisions and learnings not already recorded
-- Curate important items that should be known every session into `MEMORY.md`
-
+## Heartbeat Tasks (when nothing urgent)
+1. Check venture status files — stalled items?
+2. Pending team deliverables?
+3. Weekly report due?
